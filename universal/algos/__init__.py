@@ -5,6 +5,7 @@ from .corn import CORN
 from .bcrp import BCRP
 from .cwmr import CWMR
 from .olmar import OLMAR
+from .olmar_bah import OLMAR_BAH
 from .pamr import PAMR
 from .rmr import RMR
 from .up import UP
