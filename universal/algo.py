@@ -51,7 +51,7 @@ class Algo(object):
         """
         pass
 
-    def step(self, x, last_b, history):
+    def step(self, x, last_b, history, **kwargs):
         """ Calculate new portfolio weights. If history parameter is omited, step
         method gets passed just parameters `x` and `last_b`. This significantly
         increases performance.
@@ -66,8 +66,19 @@ class Algo(object):
         """ Use history parameter in step method? """
         step_args = inspect.getargspec(self.step)[0]
         return len(step_args) >= 4
+    
+    def get_next_weights(self,x, last_b, **kwargs):
+        #log_progress = kwargs.get("log_progress", True)
+        last_b = self.step(x, last_b, **kwargs)
+        if type(last_b) == np.matrix:
+            # remove dimension
+            last_b = np.squeeze(np.array(last_b))
 
-    def weights(self, X, min_history=None, log_progress=True):
+        # show progress by 10 pcts
+
+        return last_b
+
+    def weights(self, X, min_history=None, log_progress=True, **kwargs):
         """ Return weights. Call step method to update portfolio sequentially. Subclass
         this method only at your own risk. """
         min_history = self.min_history if min_history is None else min_history
@@ -83,42 +94,58 @@ class Algo(object):
 
         # run algo
         self.init_step(X)
-        for t, (_, x) in enumerate(X.iterrows()):
-            # save weights
-            B.ix[t] = last_b
 
-            # keep initial weights for min_history
+        for t, (_, x) in enumerate(X.iterrows()):
+            B.ix[t] = last_b
             if t < min_history:
                 continue
-
             # trade each `frequency` periods
             if (t + 1) % self.frequency != 0:
                 continue
-
-            # predict for t+1
             if use_history:
-                history = X.iloc[:t+1]
-                last_b = self.step(x, last_b, history)
-            else:
-                last_b = self.step(x, last_b)
-
-            # convert last_b to suitable format if needed
-            if type(last_b) == np.matrix:
-                # remove dimension
-                last_b = np.squeeze(np.array(last_b))
-
-            # show progress by 10 pcts
+                kwargs["history"] = X.iloc[:t+1]
+            last_b = self.get_next_weights(x, last_b, **kwargs)
             if log_progress:
-                tools.log_progress(t, len(X), by=10)
-
+                tools.log_progress(t, len(X), by=10)            
         return B
+
+        
+        #for t, (_, x) in enumerate(X.iterrows()):
+            ## save weights
+            #B.ix[t] = last_b
+
+            ## keep initial weights for min_history
+            #if t < min_history:
+                #continue
+
+            ## trade each `frequency` periods
+            #if (t + 1) % self.frequency != 0:
+                #continue
+
+            ## predict for t+1
+            #if use_history:
+                #history = X.iloc[:t+1]
+                #last_b = self.step(x, last_b, history, **kwargs)
+            #else:
+                #last_b = self.step(x, last_b, **kwargs)
+
+            ## convert last_b to suitable format if needed
+            #if type(last_b) == np.matrix:
+                ## remove dimension
+                #last_b = np.squeeze(np.array(last_b))
+
+            ## show progress by 10 pcts
+            #if log_progress:
+                #tools.log_progress(t, len(X), by=10)
+
+        #return B
 
     def _split_index(self, ix, nr_chunks, freq):
         """ Split index into chunks so that each chunk except of the last has length
         divisible by freq. """
         chunksize = int(len(ix) / freq / nr_chunks + 1) * freq
         return [ix[i*chunksize:(i+1)*chunksize] for i in range(len(ix) / chunksize + 1)]
-
+    
     def run(self, S, n_jobs=1, log_progress=True):
         """ Run algorithm and get weights.
         :params S: Absolute stock prices. DataFrame with stocks in columns.
