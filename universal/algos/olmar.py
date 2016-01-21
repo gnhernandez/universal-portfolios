@@ -15,7 +15,7 @@ class OLMAR(Algo):
 
     PRICE_TYPE = 'raw'
     REPLACE_MISSING = True
-    EMA_FLAG = True
+    EMA_FLAG = False
     EMA_ALPHA = 0.25
 
     def __init__(self, b0 =None, weight = None, window=5, eps=10):
